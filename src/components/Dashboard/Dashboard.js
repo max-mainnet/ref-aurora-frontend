@@ -1,20 +1,35 @@
-import React, { useEffect, useState } from "react";
-import { NearConfig, TGas, useAurora, useNear } from "../../data/near";
-import { useErc20Balances } from "../../data/aurora/token";
-import { useErc20AllowanceForDex } from "../../data/aurora/dex";
-import { OneNear, OneEth, OneUSDT, toAddress, buildInput, tokenStorageDeposit } from "../../data/utils";
-import Big from "big.js";
-import { useTokens } from "../../data/aurora/tokenList";
-import "./Dashboard.scss";
-import * as nearAPI from "near-api-js";
-import { Erc20Abi } from "../../abi/erc20";
-import { UniswapRouterAbi } from "../../abi/IUniswapV2Router02";
-import { useAccount } from "../../data/account";
-import { AccountID, Address } from "@aurora-is-near/engine";
+import React, { useEffect, useState, useCallback } from 'react';
+import { NearConfig, TGas, useAurora, useNear } from '../../data/near';
+import { useErc20Balances } from '../../data/aurora/token';
+import { useErc20AllowanceForDex } from '../../data/aurora/dex';
+import {
+  OneNear,
+  OneEth,
+  OneUSDT,
+  toAddress,
+  buildInput,
+  tokenStorageDeposit,
+  decodeOutput,
+} from '../../data/utils';
+import Big from 'big.js';
+import { useTokens } from '../../data/aurora/tokenList';
+import './Dashboard.scss';
+import * as nearAPI from 'near-api-js';
+import { Erc20Abi } from '../../abi/erc20';
+import { UniswapRouterAbi } from '../../abi/IUniswapV2Router02';
+
+import { UniswapPairAbi } from '../../abi/IUniswapV2Pair';
+
+import { useAccount } from '../../data/account';
+import { AccountID, Address } from '@aurora-is-near/engine';
 
 const wNEAR = NearConfig.wrapNearAccountId;
 const USDT = NearConfig.usdtAccountId;
 const trisolaris = NearConfig.trisolarisAddress;
+
+const erc20TokenAddressConfig = NearConfig.erc20TokenAddressConfig;
+
+const pairAdd = NearConfig.pairAdd;
 
 const fetchBalance = async (aurora, address) => {
   return Big((await aurora.getBalance(toAddress(address))).unwrap());
@@ -25,19 +40,41 @@ export default function Dashboard(props) {
   const near = useNear();
   const account = useAccount();
   const address = props.address;
+
   const [balance, setBalance] = useState(false);
   const [loading, setLoading] = useState(true);
   const [wNearAddr, setwNearAddr] = useState(null);
+
   const tokens = useTokens();
 
   const erc20Balances = useErc20Balances(address, tokens.tokenAddresses);
+
   const allowance = useErc20AllowanceForDex(address, wNearAddr, trisolaris);
 
+  const getErc20Addr = useCallback(
+    async (nep141) => {
+      return (
+        erc20TokenAddressConfig[nep141] ||
+        (await aurora.getAuroraErc20Address(new AccountID(nep141))).unwrap()
+      );
+    },
+    [aurora]
+  );
+
+  const getReserves = useCallback(async (aurora, address) => {
+    const input = buildInput(UniswapPairAbi, 'getReserves', []);
+
+    console.log(typeof address === 'string');
+
+    return (
+      await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
+    ).unwrap();
+  }, []);
+
   useEffect(() => {
-    if (!aurora) {
+    if (!aurora || !address) {
       return;
     }
-    setLoading(true);
 
     fetchBalance(aurora, address).then((b) => {
       setBalance(b);
@@ -45,34 +82,33 @@ export default function Dashboard(props) {
     });
 
     getErc20Addr(wNEAR).then(setwNearAddr);
-  }, [address, aurora]);
+
+    getErc20Addr('usdc.fakes.testnet').then((res) => console.log(res));
+
+    getReserves(aurora, address).then((res) => {
+      console.log(res, decodeOutput(UniswapPairAbi, 'getReserves', res));
+    });
+  }, [address, aurora, getErc20Addr, getReserves]);
 
   const sortedErc20Balances = erc20Balances
-    ? Object.entries(erc20Balances).filter(([t, b]) => b && b.gt(0))
+    ? Object.entries(erc20Balances).filter(([t, b]) => b)
     : [];
+
   sortedErc20Balances.sort(([t1, a], [t2, b]) => b.cmp(a));
-
-
-  const getErc20Addr = async (nep141) => {
-    return (await aurora.getAuroraErc20Address(new AccountID(nep141))).unwrap().toString();
-  }
-
-  const getNep141 = async (erc20) => {
-    return (await aurora.getNEP141Account(new Address(erc20))).unwrap().toString();
-  }
 
   const depositToken = async (e, token, amount) => {
     e.preventDefault();
     setLoading(true);
+
     const actions = [
       [
         token,
         nearAPI.transactions.functionCall(
-          "ft_transfer_call",
+          'ft_transfer_call',
           {
             receiver_id: NearConfig.contractName,
             amount: Big(amount).mul(OneNear).toFixed(0),
-            memo: "",
+            memo: '',
             msg: address.substring(2),
           },
           TGas.mul(70).toFixed(0),
@@ -84,30 +120,12 @@ export default function Dashboard(props) {
     await near.sendTransactions(actions);
   };
 
-  const storageDeposit = async (token, account) => {
-    const deposit = await tokenStorageDeposit(token);
-    const actions = [
-      [
-        token,
-        nearAPI.transactions.functionCall(
-          "storage_deposit",
-          {
-            receiver_id: account
-          },
-          TGas.mul(30).toFixed(0),
-          deposit.toFixed(0)
-        ),
-      ],
-    ];
-    await near.sendTransactions(actions);
-  };
-
   const withdrawToken = async (e, token, amount) => {
     e.preventDefault();
     setLoading(true);
-    const input = buildInput(Erc20Abi, "withdrawToNear", [
-      `0x${Buffer.from(account.accountId, "utf-8").toString("hex")}`,
-      OneUSDT.mul(amount).round(0, 0).toFixed(0),  // need to check decimals in real case
+    const input = buildInput(Erc20Abi, 'withdrawToNear', [
+      `0x${Buffer.from(account.accountId, 'utf-8').toString('hex')}`,
+      OneUSDT.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
     ]);
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
@@ -117,44 +135,52 @@ export default function Dashboard(props) {
     }
   };
 
-  const approve = async(e, token, amount) => {
+  const approve = async (e, token, amount) => {
     e.preventDefault();
-    setLoading(true);
-    const input = buildInput(Erc20Abi, "approve", [
+
+    const input = buildInput(Erc20Abi, 'increaseAllowance', [
       trisolaris,
       OneNear.mul(amount).round(0, 0).toFixed(0),
     ]);
+
+    setLoading(true);
+
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
       const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
       console.log(res);
       setLoading(false);
     }
-  }
+  };
 
-  const swap = async(e, from, to, amount_in, amount_out) => {
+  const swap = async (e, from, to, amount_in, amount_out) => {
     e.preventDefault();
     setLoading(true);
+
     const fromErc20 = await getErc20Addr(from);
     const toErc20 = await getErc20Addr(to);
+
     if (fromErc20 && toErc20) {
-      const input = buildInput(UniswapRouterAbi, "swapExactTokensForTokens", [
-        OneNear.mul(amount_in).round(0, 0).toFixed(0),  // need to check decimals in real case
-        OneUSDT.mul(amount_out).round(0, 0).toFixed(0),  // need to check decimals in real case
+      const input = buildInput(UniswapRouterAbi, 'swapExactTokensForTokens', [
+        OneNear.mul(amount_in).round(0, 0).toFixed(0), // need to check decimals in real case
+        OneUSDT.mul(amount_out).round(0, 0).toFixed(0), // need to check decimals in real case
         [fromErc20, toErc20],
         address,
-        (Math.floor(new Date().getTime() / 1000) + 60).toString() // 60s from now
+        (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
       console.log(res);
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div>
       <div>Account: {address.toString()}</div>
-      <div>Allowance for {wNEAR}: {allowance && allowance.div(Big(OneNear)).toNumber()}</div>
+      <div>
+        Allowance for {wNEAR}:{' '}
+        {allowance && allowance.div(Big(OneNear)).toNumber()}
+      </div>
       <div>
         <button
           className="btn btn-primary m-1"
@@ -162,21 +188,19 @@ export default function Dashboard(props) {
         >
           Deposit 1 wNEAR
         </button>
-        {
-          (!allowance || allowance.eq(Big(0))) && (
-            <button
-              className="btn btn-info m-1"
-              onClick={(e) => approve(e, wNEAR, 10)}
-            >
-              Approve wNEAR on Trisolaris
-            </button>
-          )
-        }
+        {(!allowance || allowance.eq(Big(0))) && (
+          <button
+            className="btn btn-info m-1"
+            onClick={(e) => approve(e, wNEAR, 10)}
+          >
+            Approve wNEAR on Trisolaris
+          </button>
+        )}
         <button
           className="btn btn-warning m-1"
-          onClick={(e) => swap(e, wNEAR, USDT, 0.1, 1)}
+          onClick={(e) => swap(e, wNEAR, USDT, 1, 10)}
         >
-          Swap 0.1 wNEAR to 1+ USDT on Trisolaris
+          Swap 1 wNEAR to 10+ USDT on Trisolaris
         </button>
         <button
           className="btn btn-success m-1"
@@ -186,13 +210,14 @@ export default function Dashboard(props) {
         </button>
       </div>
       <div>
-        Balance: {loading ? "Loading" : `${balance.div(OneEth).toFixed(6)} ETH`}
+        Balance: {loading ? 'Loading' : `${balance.div(OneEth).toFixed(6)} ETH`}
       </div>
       <div>
         ERC20 balances:
         <ul>
-          {sortedErc20Balances.map(([tokenAddress, balance]) => {
+          {sortedErc20Balances?.map(([tokenAddress, balance]) => {
             const token = tokens.tokensByAddress[tokenAddress];
+
             return (
               <li key={`token-balance-${tokenAddress}`}>
                 <img
@@ -200,7 +225,7 @@ export default function Dashboard(props) {
                   src={token.logoURI}
                   alt={token.symbol}
                 />
-                {token.symbol}:{" "}
+                {token.symbol}:{' '}
                 {balance
                   ? balance.div(Big(10).pow(token.decimals)).toFixed(6)
                   : balance}

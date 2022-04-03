@@ -1,8 +1,8 @@
-import * as nearAPI from "near-api-js";
-import { singletonHook } from "react-singleton-hook";
-import Big from "big.js";
-import { Engine } from "@aurora-is-near/engine/lib/engine";
-import { useEffect, useState } from "react";
+import * as nearAPI from 'near-api-js';
+import { singletonHook } from 'react-singleton-hook';
+import Big from 'big.js';
+import { Engine } from '@aurora-is-near/engine/lib/engine';
+import { useEffect, useState } from 'react';
 
 export const TGas = Big(10).pow(12);
 export const MaxGasPerTransaction = TGas.mul(300);
@@ -11,39 +11,46 @@ export const TokenStorageDeposit = StorageCostPerByte.mul(125);
 export const BridgeTokenStorageDeposit = StorageCostPerByte.mul(1250);
 
 export const randomPublicKey = nearAPI.utils.PublicKey.from(
-  "ed25519:8fWHD35Rjd78yeowShh9GwhRudRtLLsGCRjZtgPjAtw9"
+  'ed25519:8fWHD35Rjd78yeowShh9GwhRudRtLLsGCRjZtgPjAtw9'
 );
 
-// const isLocalhost = window.location.hostname === "localhost";
-
-export const IsMainnet = true;
-const TestnetContract = "aurora";
+export const IsMainnet = false;
+const TestnetContract = 'aurora';
 const TestNearConfig = {
-  networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-  archivalNodeUrl: "https://rpc.testnet.internal.near.org",
+  networkId: 'testnet',
+  nodeUrl: 'https://rpc.testnet.near.org',
+  archivalNodeUrl: 'https://rpc.testnet.internal.near.org',
   contractName: TestnetContract,
-  walletUrl: "https://wallet.testnet.near.org",
+  walletUrl: 'https://wallet.testnet.near.org',
   storageCostPerByte: StorageCostPerByte,
-  wrapNearAccountId: "wrap.testnet",
-  auroraContractId: "aurora",
+  wrapNearAccountId: 'wrap.testnet',
+  usdtAccountId: 'usdt.fakes.testnet',
+  trisolarisAddress: '0x26ec2aFBDFdFB972F106100A3deaE5887353d9B9',
+  auroraContractId: 'aurora',
+  erc20TokenAddressConfig: {
+    'wrap.testnet': '0x8711C4728324C9b6264829a2fb92C83c870fd1BE',
+    'usdt.fakes.testnet': '0x510c25DCE320749301Fdc4CAde5d0073fe50Ddd8',
+  },
+  pairAdd: '0x5Bb98Bb9945d7CBC62918A7856d879C7017B2531',
 };
-const MainnetContract = "aurora";
+const MainnetContract = 'aurora';
 export const MainNearConfig = {
-  networkId: "mainnet",
-  nodeUrl: "https://rpc.mainnet.near.org",
-  archivalNodeUrl: "https://rpc.mainnet.internal.near.org",
+  networkId: 'mainnet',
+  nodeUrl: 'https://rpc.mainnet.near.org',
+  archivalNodeUrl: 'https://rpc.mainnet.internal.near.org',
   contractName: MainnetContract,
-  walletUrl: "https://wallet.near.org",
+  walletUrl: 'https://wallet.near.org',
   storageCostPerByte: StorageCostPerByte,
-  wrapNearAccountId: "wrap.near",
-  usdtAccountId: "dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near",
-  trisolarisAddress: "0x2cb45edb4517d5947afde3beabf95a582506858b",
-  auroraContractId: "aurora",
+  wrapNearAccountId: 'wrap.near',
+  usdtAccountId: 'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+  trisolarisAddress: '0x2cb45edb4517d5947afde3beabf95a582506858b',
+  auroraContractId: 'aurora',
+  erc20TokenAddressConfig: {},
+  pairAdd: '',
 };
 
 export const NearConfig = IsMainnet ? MainNearConfig : TestNearConfig;
-export const LsKey = NearConfig.contractName + ":v01:";
+export const LsKey = NearConfig.contractName + ':v01:';
 
 async function _initNear() {
   const keyStore = new nearAPI.keyStores.BrowserLocalStorageKeyStore();
@@ -56,10 +63,10 @@ async function _initNear() {
   _near.nearArchivalConnection = nearAPI.Connection.fromConfig({
     networkId: NearConfig.networkId,
     provider: {
-      type: "JsonRpcProvider",
+      type: 'JsonRpcProvider',
       args: { url: NearConfig.archivalNodeUrl },
     },
-    signer: { type: "InMemorySigner", keyStore },
+    signer: { type: 'InMemorySigner', keyStore },
   });
 
   _near.keyStore = keyStore;
@@ -83,14 +90,14 @@ async function _initNear() {
 
   _near.fetchBlockHash = async () => {
     const block = await nearConnection.connection.provider.block({
-      finality: "final",
+      finality: 'final',
     });
     return nearAPI.utils.serialize.base_decode(block.header.hash);
   };
 
   _near.fetchBlockHeight = async () => {
     const block = await nearConnection.connection.provider.block({
-      finality: "final",
+      finality: 'final',
     });
     return block.header.height;
   };
@@ -151,10 +158,10 @@ async function _initNear() {
   _near.archivalViewCall = async (blockId, contractId, methodName, args) => {
     args = args || {};
     const result = await _near.nearArchivalConnection.provider.query({
-      request_type: "call_function",
+      request_type: 'call_function',
       account_id: contractId,
       method_name: methodName,
-      args_base64: Buffer.from(JSON.stringify(args)).toString("base64"),
+      args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
       block_id: blockId,
     });
 

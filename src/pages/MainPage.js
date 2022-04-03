@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import Dashboard from "../components/Dashboard/Dashboard";
-import { useAccount } from "../data/account";
-import { AccountID } from "@aurora-is-near/engine";
+import React, { useEffect, useState } from 'react';
+import Dashboard from '../components/Dashboard/Dashboard';
+import { useAccount } from '../data/account';
+import { AccountID } from '@aurora-is-near/engine';
 
 export default function MainPage(props) {
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState('');
 
   const account = useAccount();
 
@@ -12,7 +12,6 @@ export default function MainPage(props) {
   useEffect(() => {
     if (accountId) {
       const address = new AccountID(accountId).toAddress().toString();
-      console.log(address);
       setAddress(address);
     }
   }, [accountId]);
