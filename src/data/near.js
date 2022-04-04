@@ -24,14 +24,14 @@ const TestNearConfig = {
   walletUrl: 'https://wallet.testnet.near.org',
   storageCostPerByte: StorageCostPerByte,
   wrapNearAccountId: 'wrap.testnet',
-  usdtAccountId: 'usdt.fakes.testnet',
+  usdcAccountId: 'usdc.fakes.testnet',
   trisolarisAddress: '0x26ec2aFBDFdFB972F106100A3deaE5887353d9B9',
   auroraContractId: 'aurora',
   erc20TokenAddressConfig: {
     'wrap.testnet': '0x8711C4728324C9b6264829a2fb92C83c870fd1BE',
     'usdt.fakes.testnet': '0x510c25DCE320749301Fdc4CAde5d0073fe50Ddd8',
   },
-  pairAdd: '0x5Bb98Bb9945d7CBC62918A7856d879C7017B2531',
+  pairAdd: '0x37401f53be96E28996d18A1964F47dF9e23b15D2',
 };
 const MainnetContract = 'aurora';
 export const MainNearConfig = {
@@ -42,7 +42,7 @@ export const MainNearConfig = {
   walletUrl: 'https://wallet.near.org',
   storageCostPerByte: StorageCostPerByte,
   wrapNearAccountId: 'wrap.near',
-  usdtAccountId: 'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+  usdcAccountId: 'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
   trisolarisAddress: '0x2cb45edb4517d5947afde3beabf95a582506858b',
   auroraContractId: 'aurora',
   erc20TokenAddressConfig: {},

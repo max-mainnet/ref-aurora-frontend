@@ -345,7 +345,7 @@ const defaultTokenList = {
     },
     {
       chainId: 1313161555,
-      address: '0x8711C4728324C9b6264829a2fb92C83c870fd1BE',
+      address: '0x4861825E75ab14553E5aF711EbbE6873d369d146',
       symbol: 'wNEAR',
       name: 'Wrapped NEAR fungible token',
       decimals: 24,
@@ -494,23 +494,13 @@ const defaultTokenList = {
       tags: ['ethereum'],
     },
     {
-      chainId: 1313161554,
-      address: '0xb12bfca5a55806aaf64e99521918a4bf0fc40802',
+      chainId: 1313161555,
+      address: '0xfbe05B1d7bE9A5510C8363e5B9dc1F6AcB03F209',
       symbol: 'USDC',
       name: 'USD Coin',
       decimals: 6,
       logoURI:
         'https://raw.githubusercontent.com/aurora-is-near/bridge-assets/master/tokens/usdc.svg',
-      tags: ['ethereum'],
-    },
-    {
-      chainId: 1313161555,
-      address: '0x510c25DCE320749301Fdc4CAde5d0073fe50Ddd8',
-      symbol: 'USDT',
-      name: 'TetherUS',
-      decimals: 6,
-      logoURI:
-        'https://raw.githubusercontent.com/aurora-is-near/bridge-assets/master/tokens/usdt.svg',
       tags: ['ethereum'],
     },
     {

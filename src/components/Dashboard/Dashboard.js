@@ -5,7 +5,7 @@ import { useErc20AllowanceForDex } from '../../data/aurora/dex';
 import {
   OneNear,
   OneEth,
-  OneUSDT,
+  OneUSDC,
   toAddress,
   buildInput,
   tokenStorageDeposit,
@@ -24,10 +24,8 @@ import { useAccount } from '../../data/account';
 import { AccountID, Address } from '@aurora-is-near/engine';
 
 const wNEAR = NearConfig.wrapNearAccountId;
-const USDT = NearConfig.usdtAccountId;
+const USDC = NearConfig.usdcAccountId;
 const trisolaris = NearConfig.trisolarisAddress;
-
-const erc20TokenAddressConfig = NearConfig.erc20TokenAddressConfig;
 
 const pairAdd = NearConfig.pairAdd;
 
@@ -45,18 +43,21 @@ export default function Dashboard(props) {
   const [loading, setLoading] = useState(true);
   const [wNearAddr, setwNearAddr] = useState(null);
 
+  const [USDCAddr, setUSDCAddr] = useState(null);
+
   const tokens = useTokens();
 
   const erc20Balances = useErc20Balances(address, tokens.tokenAddresses);
 
   const allowance = useErc20AllowanceForDex(address, wNearAddr, trisolaris);
 
+  const allowanceUSDC = useErc20AllowanceForDex(address, USDCAddr, trisolaris);
+
   const getErc20Addr = useCallback(
     async (nep141) => {
       return (
-        erc20TokenAddressConfig[nep141] ||
-        (await aurora.getAuroraErc20Address(new AccountID(nep141))).unwrap()
-      );
+        await aurora.getAuroraErc20Address(new AccountID(nep141))
+      ).unwrap();
     },
     [aurora]
   );
@@ -83,7 +84,7 @@ export default function Dashboard(props) {
 
     getErc20Addr(wNEAR).then(setwNearAddr);
 
-    getErc20Addr('usdc.fakes.testnet').then((res) => console.log(res));
+    getErc20Addr(USDC).then(setUSDCAddr);
 
     getReserves(aurora, address).then((res) => {
       console.log(res, decodeOutput(UniswapPairAbi, 'getReserves', res));
@@ -96,7 +97,7 @@ export default function Dashboard(props) {
 
   sortedErc20Balances.sort(([t1, a], [t2, b]) => b.cmp(a));
 
-  const depositToken = async (e, token, amount) => {
+  const depositToken = async (e, token, amount, unit) => {
     e.preventDefault();
     setLoading(true);
 
@@ -107,7 +108,7 @@ export default function Dashboard(props) {
           'ft_transfer_call',
           {
             receiver_id: NearConfig.contractName,
-            amount: Big(amount).mul(OneNear).toFixed(0),
+            amount: Big(amount).mul(unit).toFixed(0),
             memo: '',
             msg: address.substring(2),
           },
@@ -125,7 +126,7 @@ export default function Dashboard(props) {
     setLoading(true);
     const input = buildInput(Erc20Abi, 'withdrawToNear', [
       `0x${Buffer.from(account.accountId, 'utf-8').toString('hex')}`,
-      OneUSDT.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
+      OneUSDC.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
     ]);
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
@@ -163,14 +164,50 @@ export default function Dashboard(props) {
     if (fromErc20 && toErc20) {
       const input = buildInput(UniswapRouterAbi, 'swapExactTokensForTokens', [
         OneNear.mul(amount_in).round(0, 0).toFixed(0), // need to check decimals in real case
-        OneUSDT.mul(amount_out).round(0, 0).toFixed(0), // need to check decimals in real case
-        [fromErc20, toErc20],
+        OneUSDC.mul(amount_out).round(0, 0).toFixed(0), // need to check decimals in real case
+        [fromErc20.id, toErc20.id],
         address,
         (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
       console.log(res);
       setLoading(false);
+    }
+  };
+
+  const addLiquidity = async (e, A, B, amountA, amountB) => {
+    const erc20A = await getErc20Addr(A);
+    const erc20B = await getErc20Addr(B);
+
+    console.log(
+      'wnear',
+      erc20A.id,
+      'usdc',
+      erc20B.id,
+      OneNear.mul(amountA).round(0, 0).toFixed(0),
+      OneUSDC.mul(amountB).round(0, 0).toFixed(0),
+      0,
+      0,
+      address
+    );
+
+    if (erc20A && erc20B) {
+      const input = buildInput(UniswapRouterAbi, 'addLiquidity', [
+        erc20A.id,
+        erc20B.id,
+        OneNear.mul(amountA).round(0, 0).toFixed(0),
+        OneUSDC.mul(amountB).round(0, 0).toFixed(0),
+        0,
+        0,
+        address,
+        (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
+      ]);
+
+      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+
+      // console.log(res);
+
+      console.log(decodeOutput(UniswapRouterAbi, 'addLiquidity', res));
     }
   };
 
@@ -181,14 +218,33 @@ export default function Dashboard(props) {
         Allowance for {wNEAR}:{' '}
         {allowance && allowance.div(Big(OneNear)).toNumber()}
       </div>
+
+      <div>
+        Allowance for {USDC}:{' '}
+        {allowanceUSDC && allowanceUSDC.div(Big(OneNear)).toNumber()}
+      </div>
       <div>
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => depositToken(e, wNEAR, 1)}
+          onClick={(e) => addLiquidity(e, wNEAR, USDC, 1, 1)}
+        >
+          add liquidity for 1 wnear and 1 USDC
+        </button>
+
+        <button
+          className="btn btn-primary m-1"
+          onClick={(e) => depositToken(e, USDC, 1, OneUSDC)}
+        >
+          Deposit 1 USDC
+        </button>
+
+        <button
+          className="btn btn-primary m-1"
+          onClick={(e) => depositToken(e, wNEAR, 1, OneNear)}
         >
           Deposit 1 wNEAR
         </button>
-        {(!allowance || allowance.eq(Big(0))) && (
+        {(!allowance || allowance.lt(Big(10))) && (
           <button
             className="btn btn-info m-1"
             onClick={(e) => approve(e, wNEAR, 10)}
@@ -196,17 +252,26 @@ export default function Dashboard(props) {
             Approve wNEAR on Trisolaris
           </button>
         )}
+
+        {(!allowanceUSDC || allowanceUSDC.lt(Big(10))) && (
+          <button
+            className="btn btn-info m-1"
+            onClick={(e) => approve(e, USDC, 10)}
+          >
+            Approve USDC on Trisolaris
+          </button>
+        )}
         <button
           className="btn btn-warning m-1"
-          onClick={(e) => swap(e, wNEAR, USDT, 1, 10)}
+          onClick={(e) => swap(e, wNEAR, USDC, 1, 0)}
         >
-          Swap 1 wNEAR to 10+ USDT on Trisolaris
+          Swap 1 wNEAR to USDC on Trisolaris test pair
         </button>
         <button
           className="btn btn-success m-1"
-          onClick={(e) => withdrawToken(e, USDT, 1)}
+          onClick={(e) => withdrawToken(e, USDC, 1)}
         >
-          Withdraw 1 USDT
+          Withdraw 1 USDC
         </button>
       </div>
       <div>
