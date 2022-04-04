@@ -20,7 +20,10 @@ function App(props) {
       const appTitle = 'wiki';
       const near = await _near;
 
-      await near.walletConnection.requestSignIn('aurora', appTitle);
+      await near.walletConnection.requestSignIn(
+        'exchange.ref-dev.testnet',
+        appTitle
+      );
       return false;
     },
     [_near]

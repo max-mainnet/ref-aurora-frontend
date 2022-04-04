@@ -237,7 +237,7 @@ export default function Dashboard(props) {
     }
 
     // swap
-    const swapAction = await swap(e, tokenA, tokenB, amountA, 0);
+    await swap(e, tokenA, tokenB, amountA, 0);
 
     // withdraw all
     await Promise.all(
