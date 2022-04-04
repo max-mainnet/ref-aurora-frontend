@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
-import "error-polyfill";
-import "bootstrap-icons/font/bootstrap-icons.css";
-import "bootstrap/dist/js/bootstrap.bundle";
-import "./App.scss";
-import { BrowserRouter as Router, Link, Route, Switch } from "react-router-dom";
-import { NearConfig, useNearPromise } from "./data/near";
-import MainPage from "./pages/MainPage";
+import React, { useCallback, useEffect, useState } from 'react';
+import 'error-polyfill';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+import 'bootstrap/dist/js/bootstrap.bundle';
+import './App.scss';
+import { BrowserRouter as Router, Link, Route, Switch } from 'react-router-dom';
+import { NearConfig, useNearPromise } from './data/near';
+import MainPage from './pages/MainPage';
 
 function App(props) {
   const [connected, setConnected] = useState(false);
@@ -17,7 +17,7 @@ function App(props) {
   const requestSignIn = useCallback(
     async (e) => {
       e && e.preventDefault();
-      const appTitle = "wiki";
+      const appTitle = 'wiki';
       const near = await _near;
 
       await near.walletConnection.requestSignIn(
@@ -60,9 +60,9 @@ function App(props) {
     connected,
   };
 
-  const header = !connected ? (
+  const Header = !connected ? (
     <div>
-      Connecting...{" "}
+      Connecting...{' '}
       <span
         className="spinner-grow spinner-grow-sm"
         role="status"
@@ -91,7 +91,11 @@ function App(props) {
       <Router basename={process.env.PUBLIC_URL}>
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary mb-3">
           <div className="container-fluid">
-            <a className="navbar-brand" href="/" title="Play with Aurora DeFi protocols using NEAR account">
+            <a
+              className="navbar-brand"
+              href="/"
+              title="Play with Aurora DeFi protocols using NEAR account"
+            >
               Play with Aurora DeFi protocols using NEAR account
             </a>
             <button
@@ -116,13 +120,13 @@ function App(props) {
                   </Link>
                 </li>
               </ul>
-              <form className="d-flex">{header}</form>
+              <form className="d-flex">{Header}</form>
             </div>
           </div>
         </nav>
 
         <Switch>
-          <Route exact path={"/"}>
+          <Route exact path={'/'}>
             <MainPage {...passProps} />
           </Route>
         </Switch>

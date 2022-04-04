@@ -179,18 +179,6 @@ export default function Dashboard(props) {
     const erc20A = await getErc20Addr(A);
     const erc20B = await getErc20Addr(B);
 
-    console.log(
-      'wnear',
-      erc20A.id,
-      'usdc',
-      erc20B.id,
-      OneNear.mul(amountA).round(0, 0).toFixed(0),
-      OneUSDC.mul(amountB).round(0, 0).toFixed(0),
-      0,
-      0,
-      address
-    );
-
     if (erc20A && erc20B) {
       const input = buildInput(UniswapRouterAbi, 'addLiquidity', [
         erc20A.id,
@@ -204,8 +192,6 @@ export default function Dashboard(props) {
       ]);
 
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
-
-      // console.log(res);
 
       console.log(decodeOutput(UniswapRouterAbi, 'addLiquidity', res));
     }

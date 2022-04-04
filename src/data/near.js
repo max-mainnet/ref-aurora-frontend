@@ -15,7 +15,7 @@ export const randomPublicKey = nearAPI.utils.PublicKey.from(
 );
 
 export const IsMainnet = false;
-const TestnetContract = 'aurora';
+const TestnetContract = 'exchange.ref-dev.testnet';
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
