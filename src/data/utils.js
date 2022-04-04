@@ -2,12 +2,18 @@ import Big from 'big.js';
 import {
   BridgeTokenStorageDeposit,
   NearConfig,
+  TGas,
   TokenStorageDeposit,
 } from './near';
 import React from 'react';
 import Timer from 'react-compound-timer';
-import { Address, parseHexString } from '@aurora-is-near/engine';
+import {
+  Address,
+  FunctionCallArgs,
+  parseHexString,
+} from '@aurora-is-near/engine';
 import AbiCoder from 'web3-eth-abi';
+import * as nearAPI from 'near-api-js';
 
 const MinAccountIdLen = 2;
 const MaxAccountIdLen = 64;
@@ -192,4 +198,18 @@ export function prepareInput(args) {
   if (typeof args === 'undefined') return Buffer.alloc(0);
   if (typeof args === 'string') return Buffer.from(parseHexString(args));
   return Buffer.from(args);
+}
+
+export function auroraCallAction(contract, input) {
+  let args = new FunctionCallArgs(
+    contract.toBytes(),
+    prepareInput(input)
+  ).encode();
+
+  return nearAPI.transactions.functionCall(
+    'call',
+    args,
+    TGas.mul(150).toFixed(0),
+    1
+  );
 }

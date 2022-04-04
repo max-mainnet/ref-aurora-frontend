@@ -9,6 +9,7 @@ import {
   toAddress,
   buildInput,
   decodeOutput,
+  auroraCallAction,
 } from '../../data/utils';
 import Big from 'big.js';
 import { useTokens } from '../../data/aurora/tokenList';
@@ -21,6 +22,7 @@ import { UniswapPairAbi } from '../../abi/IUniswapV2Pair';
 
 import { useAccount } from '../../data/account';
 import { AccountID, parseHexString } from '@aurora-is-near/engine';
+import { KeyPair } from 'near-api-js';
 
 const wNEAR = NearConfig.wrapNearAccountId;
 const USDC = NearConfig.usdcAccountId;
@@ -69,10 +71,26 @@ export default function Dashboard(props) {
     ).unwrap();
   }, []);
 
+  const showAllAuroraKeys = useCallback(async () => {
+    if (!near || !near.walletConnection) return;
+
+    const nearAccount = await near.walletConnection.account();
+    const allKeys = await nearAccount.getAccessKeys();
+
+    const auroraKeys = allKeys.filter(
+      (item) =>
+        item.access_key.permission !== 'FullAccess' &&
+        item.access_key.permission.FunctionCall.receiver_id === 'aurora'
+    );
+
+    console.log(auroraKeys);
+  }, [near]);
+
   useEffect(() => {
     if (!aurora || !address) {
       return;
     }
+    showAllAuroraKeys();
 
     fetchBalance(aurora, address).then((b) => {
       setBalance(b);
@@ -84,7 +102,7 @@ export default function Dashboard(props) {
     getErc20Addr(USDC).then(setUSDCAddr);
 
     getReserves(aurora, address);
-  }, [address, aurora, getErc20Addr, getReserves]);
+  }, [address, aurora, getErc20Addr, getReserves, showAllAuroraKeys, near]);
 
   const sortedErc20Balances = erc20Balances
     ? Object.entries(erc20Balances).filter(([t, b]) => b && Big(b).gt(0))
@@ -116,18 +134,18 @@ export default function Dashboard(props) {
     await near.sendTransactions(actions);
   };
 
-  const withdrawToken = async (e, token, amount) => {
+  const withdrawToken = async (e, token, amount, unit) => {
     e.preventDefault();
     setLoading(true);
     const input = buildInput(Erc20Abi, 'withdrawToNear', [
       `0x${Buffer.from(account.accountId, 'utf-8').toString('hex')}`,
-      OneUSDC.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
+      unit.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
     ]);
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
       const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
       console.log(res);
-      setLoading(false);
+      // return ['aurora', auroraCallAction(toAddress(erc20Addr), input)];
     }
   };
 
@@ -166,7 +184,9 @@ export default function Dashboard(props) {
         (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+
       console.log(res);
+
       setLoading(false);
     }
   };
@@ -193,10 +213,20 @@ export default function Dashboard(props) {
     }
   };
 
-  // TODO: add function call key to aurora
+  const addFunctionCallKey = async () => {
+    const nearAccount = await near.walletConnection.account();
+
+    await nearAccount.addKey(
+      KeyPair.fromRandom('ed25519').getPublicKey(),
+      'aurora',
+      'call',
+      '2500000000000'
+    );
+  };
 
   const oneClickToAll = async (e, tokenA, tokenB, amountA) => {
     // check allowance compare allowance to account
+
     if (Big(allowance).lt(Big(amountA))) {
       await approve(
         e,
@@ -207,18 +237,25 @@ export default function Dashboard(props) {
     }
 
     // swap
-    await swap(e, tokenA, tokenB, amountA, 0);
+    const swapAction = await swap(e, tokenA, tokenB, amountA, 0);
 
     // withdraw all
     await Promise.all(
-      sortedErc20Balances.map((entry) => {
+      sortedErc20Balances.map((entry, i) => {
         const id = entry[0];
 
         const token = tokens.tokensByAddress[id];
 
+        const nep141 = i === 0 ? 'wrap.testnet' : 'usdc.fakes.testnet';
+
         const balance = entry[1].div(Big(10).pow(token.decimals));
 
-        return withdrawToken(token, balance);
+        return withdrawToken(
+          e,
+          nep141,
+          balance > 10 ? balance - 2 : balance,
+          i === 0 ? OneNear : OneUSDC
+        );
       })
     );
   };
@@ -238,6 +275,13 @@ export default function Dashboard(props) {
       <div>
         <button
           className="btn btn-primary m-1"
+          onClick={(e) => addFunctionCallKey()}
+        >
+          add function call key to aurora
+        </button>
+
+        <button
+          className="btn btn-primary m-1"
           onClick={(e) => addLiquidity(e, wNEAR, USDC, 1, 1)}
         >
           add liquidity for 1 wnear and 1 USDC
@@ -245,16 +289,16 @@ export default function Dashboard(props) {
 
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => depositToken(e, USDC, 1, OneUSDC)}
+          onClick={(e) => depositToken(e, USDC, 10, OneUSDC)}
         >
-          Deposit 1 USDC
+          Deposit 10 USDC
         </button>
 
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => depositToken(e, wNEAR, 1, OneNear)}
+          onClick={(e) => depositToken(e, wNEAR, 10, OneNear)}
         >
-          Deposit 1 wNEAR
+          Deposit 10 wNEAR
         </button>
         <button
           className="btn btn-info m-1"
@@ -277,7 +321,7 @@ export default function Dashboard(props) {
         </button>
         <button
           className="btn btn-success m-1"
-          onClick={(e) => withdrawToken(e, USDC, 1)}
+          onClick={(e) => withdrawToken(e, USDC, 1, OneUSDC)}
         >
           Withdraw 1 USDC
         </button>

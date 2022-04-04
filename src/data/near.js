@@ -74,7 +74,7 @@ async function _initNear() {
 
   _near.walletConnection = new nearAPI.WalletConnection(
     nearConnection,
-    'exchange.ref-dev.testnet'
+    'aurora'
   );
   _near.accountId = _near.walletConnection.getAccountId();
   _near.account = _near.walletConnection.account();
