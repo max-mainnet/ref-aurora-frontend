@@ -15,7 +15,7 @@ export const randomPublicKey = nearAPI.utils.PublicKey.from(
 );
 
 export const IsMainnet = false;
-const TestnetContract = 'exchange.ref-dev.testnet';
+const TestnetContract = 'aurora';
 const TestNearConfig = {
   networkId: 'testnet',
   nodeUrl: 'https://rpc.testnet.near.org',
@@ -74,7 +74,7 @@ async function _initNear() {
 
   _near.walletConnection = new nearAPI.WalletConnection(
     nearConnection,
-    NearConfig.contractName
+    'exchange.ref-dev.testnet'
   );
   _near.accountId = _near.walletConnection.getAccountId();
   _near.account = _near.walletConnection.account();

@@ -6,7 +6,7 @@ import {
 } from './near';
 import React from 'react';
 import Timer from 'react-compound-timer';
-import { Address } from '@aurora-is-near/engine';
+import { Address, parseHexString } from '@aurora-is-near/engine';
 import AbiCoder from 'web3-eth-abi';
 
 const MinAccountIdLen = 2;
@@ -187,3 +187,9 @@ export const decodeOutput = (abi, methodName, buffer) => {
     `0x${buffer.toString('hex')}`
   );
 };
+
+export function prepareInput(args) {
+  if (typeof args === 'undefined') return Buffer.alloc(0);
+  if (typeof args === 'string') return Buffer.from(parseHexString(args));
+  return Buffer.from(args);
+}

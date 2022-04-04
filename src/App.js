@@ -21,7 +21,7 @@ function App(props) {
       const near = await _near;
 
       await near.walletConnection.requestSignIn(
-        NearConfig.contractName,
+        'exchange.ref-dev.testnet',
         appTitle
       );
       return false;
