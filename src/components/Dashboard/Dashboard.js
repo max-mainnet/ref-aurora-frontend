@@ -239,25 +239,11 @@ export default function Dashboard(props) {
     // swap
     await swap(e, tokenA, tokenB, amountA, 0);
 
-    // withdraw all
-    await Promise.all(
-      sortedErc20Balances.map((entry, i) => {
-        const id = entry[0];
+    // query all balances on and withdraw all
 
-        const token = tokens.tokensByAddress[id];
+    await withdrawToken(e, wNEAR, 1, OneNear);
 
-        const nep141 = i === 0 ? 'wrap.testnet' : 'usdc.fakes.testnet';
-
-        const balance = entry[1].div(Big(10).pow(token.decimals));
-
-        return withdrawToken(
-          e,
-          nep141,
-          balance > 10 ? balance - 2 : balance,
-          i === 0 ? OneNear : OneUSDC
-        );
-      })
-    );
+    await withdrawToken(e, USDC, 1, OneUSDC);
   };
 
   return (

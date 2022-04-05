@@ -7,6 +7,8 @@ import { BrowserRouter as Router, Link, Route, Switch } from 'react-router-dom';
 import { NearConfig, useNearPromise } from './data/near';
 import MainPage from './pages/MainPage';
 
+const RefTestContract = 'exchange.ref-dev.testnet';
+
 function App(props) {
   const [connected, setConnected] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -20,10 +22,7 @@ function App(props) {
       const appTitle = 'wiki';
       const near = await _near;
 
-      await near.walletConnection.requestSignIn(
-        'exchange.ref-dev.testnet',
-        appTitle
-      );
+      await near.walletConnection.requestSignIn(RefTestContract, appTitle);
       return false;
     },
     [_near]
