@@ -9,6 +9,7 @@ import {
   toAddress,
   buildInput,
   decodeOutput,
+  parseAuroraPool,
   auroraCallAction,
 } from '../../data/utils';
 import Big from 'big.js';
@@ -21,8 +22,7 @@ import { UniswapRouterAbi } from '../../abi/IUniswapV2Router02';
 import { UniswapPairAbi } from '../../abi/IUniswapV2Pair';
 
 import { useAccount } from '../../data/account';
-import { AccountID, parseHexString } from '@aurora-is-near/engine';
-import { KeyPair } from 'near-api-js';
+import { AccountID } from '@aurora-is-near/engine';
 
 const wNEAR = NearConfig.wrapNearAccountId;
 const USDC = NearConfig.usdcAccountId;
@@ -63,34 +63,30 @@ export default function Dashboard(props) {
     [aurora]
   );
 
-  const getReserves = useCallback(async (aurora, address) => {
-    const input = buildInput(UniswapPairAbi, 'getReserves', []);
+  const getReserves = useCallback(
+    async (aurora, address, nep141A, nep141B) => {
+      const input = buildInput(UniswapPairAbi, 'getReserves', []);
 
-    return (
-      await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
-    ).unwrap();
-  }, []);
+      const Erc20A = await getErc20Addr(nep141A);
+      const Erc20B = await getErc20Addr(nep141B);
 
-  const showAllAuroraKeys = useCallback(async () => {
-    if (!near || !near.walletConnection) return;
+      console.log(Erc20A.id, Erc20B.id, Erc20A.id < Erc20B.id);
 
-    const nearAccount = await near.walletConnection.account();
-    const allKeys = await nearAccount.getAccessKeys();
+      const res = (
+        await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
+      ).unwrap();
 
-    const auroraKeys = allKeys.filter(
-      (item) =>
-        item.access_key.permission !== 'FullAccess' &&
-        item.access_key.permission.FunctionCall.receiver_id === 'aurora'
-    );
+      const decodedRes = decodeOutput(UniswapPairAbi, 'getReserves', res);
 
-    console.log(auroraKeys);
-  }, [near]);
+      return parseAuroraPool(decodedRes, nep141A, nep141B, Erc20A, Erc20B);
+    },
+    [getErc20Addr]
+  );
 
   useEffect(() => {
     if (!aurora || !address) {
       return;
     }
-    showAllAuroraKeys();
 
     fetchBalance(aurora, address).then((b) => {
       setBalance(b);
@@ -101,8 +97,8 @@ export default function Dashboard(props) {
 
     getErc20Addr(USDC).then(setUSDCAddr);
 
-    getReserves(aurora, address);
-  }, [address, aurora, getErc20Addr, getReserves, showAllAuroraKeys, near]);
+    getReserves(aurora, address, wNEAR, USDC).then((res) => console.log(res));
+  }, [address, aurora, getErc20Addr, getReserves, near]);
 
   const sortedErc20Balances = erc20Balances
     ? Object.entries(erc20Balances).filter(([t, b]) => b && Big(b).gt(0))
@@ -111,40 +107,58 @@ export default function Dashboard(props) {
   sortedErc20Balances.sort(([t1, a], [t2, b]) => b.cmp(a));
 
   const depositToken = async (e, token, amount, unit) => {
-    e.preventDefault();
-    setLoading(true);
+    // e.preventDefault();
+    // setLoading(true);
 
-    const actions = [
-      [
-        token,
-        nearAPI.transactions.functionCall(
-          'ft_transfer_call',
-          {
-            receiver_id: NearConfig.contractName,
-            amount: Big(amount).mul(unit).toFixed(0),
-            memo: '',
-            msg: address.substring(2),
-          },
-          TGas.mul(70).toFixed(0),
-          1
-        ),
-      ],
+    // const actions = [
+    //   [
+    //     token,
+    //     nearAPI.transactions.functionCall(
+    //       'ft_transfer_call',
+    //       {
+    //         receiver_id: NearConfig.contractName,
+    //         amount: Big(amount).mul(unit).toFixed(0),
+    //         memo: '',
+    //         msg: address.substring(2),
+    //       },
+    //       TGas.mul(70).toFixed(0),
+    //       1
+    //     ),
+    //   ],
+    // ];
+
+    return [
+      token,
+      nearAPI.transactions.functionCall(
+        'ft_transfer_call',
+        {
+          receiver_id: NearConfig.contractName,
+          amount: Big(amount).mul(unit).toFixed(0),
+          memo: '',
+          msg: address.substring(2),
+        },
+        TGas.mul(70).toFixed(0),
+        1
+      ),
     ];
 
-    await near.sendTransactions(actions);
+    // await near.sendTransactions(actions);
   };
 
   const withdrawToken = async (e, token, amount, unit) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
     const input = buildInput(Erc20Abi, 'withdrawToNear', [
       `0x${Buffer.from(account.accountId, 'utf-8').toString('hex')}`,
       unit.mul(amount).round(0, 0).toFixed(0), // need to check decimals in real case
     ]);
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
-      const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
-      console.log(res);
+      // const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
+
+      return auroraCallAction(toAddress(erc20Addr), input);
+
+      // console.log(res);
       // return ['aurora', auroraCallAction(toAddress(erc20Addr), input)];
     }
   };
@@ -157,20 +171,23 @@ export default function Dashboard(props) {
       unit.mul(amount).round(0, 0).toFixed(0),
     ]);
 
-    setLoading(true);
+    // setLoading(true);
 
     const erc20Addr = await getErc20Addr(token);
-    if (erc20Addr) {
-      const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
-      setLoading(false);
 
-      console.log(res);
+    if (erc20Addr) {
+      return auroraCallAction(toAddress(erc20Addr), input);
+
+      // const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
+      // setLoading(false);
+
+      // console.log(res);
     }
   };
 
   const swap = async (e, from, to, amount_in, amount_out) => {
     e.preventDefault();
-    setLoading(true);
+    // setLoading(true);
 
     const fromErc20 = await getErc20Addr(from);
     const toErc20 = await getErc20Addr(to);
@@ -183,11 +200,13 @@ export default function Dashboard(props) {
         address,
         (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
-      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+      // const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
 
-      console.log(res);
+      return auroraCallAction(toAddress(trisolaris), input);
 
-      setLoading(false);
+      // console.log(res);
+
+      // setLoading(false);
     }
   };
 
@@ -213,37 +232,41 @@ export default function Dashboard(props) {
     }
   };
 
-  const addFunctionCallKey = async () => {
-    const nearAccount = await near.walletConnection.account();
-
-    await nearAccount.addKey(
-      KeyPair.fromRandom('ed25519').getPublicKey(),
-      'aurora',
-      'call',
-      '2500000000000'
-    );
-  };
-
   const oneClickToAll = async (e, tokenA, tokenB, amountA) => {
     // check allowance compare allowance to account
+    e.preventDefault();
+    const actionList = [];
+    console.log('1212');
+
+    const depositAction = await depositToken(e, wNEAR, amountA, OneNear);
+    console.log(depositAction);
+    actionList.push(depositAction);
 
     if (Big(allowance).lt(Big(amountA))) {
-      await approve(
+      const approveAction = await approve(
         e,
         tokenA,
         Number(amountA) - Number(allowance?.div(Big(OneNear)).toFixed(0)),
         OneNear
       );
+      actionList.push(approveAction);
     }
 
     // swap
-    await swap(e, tokenA, tokenB, amountA, 0);
+    //TODO: slippage tolerance
+    const swapAction = await swap(e, tokenA, tokenB, amountA, 0);
+
+    actionList.push(swapAction);
 
     // query all balances on and withdraw all
 
-    await withdrawToken(e, wNEAR, 1, OneNear);
+    // const withdrawAction =  await withdrawToken(e, wNEAR, 1, OneNear);
 
-    await withdrawToken(e, USDC, 1, OneUSDC);
+    const withdrawAction = await withdrawToken(e, USDC, 1, OneUSDC);
+
+    actionList.push(withdrawAction);
+
+    near.sendTransactions(actionList);
   };
 
   return (
@@ -261,16 +284,9 @@ export default function Dashboard(props) {
       <div>
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => addFunctionCallKey()}
+          onClick={(e) => addLiquidity(e, wNEAR, USDC, 1, 10)}
         >
-          add function call key to aurora
-        </button>
-
-        <button
-          className="btn btn-primary m-1"
-          onClick={(e) => addLiquidity(e, wNEAR, USDC, 1, 1)}
-        >
-          add liquidity for 1 wnear and 1 USDC
+          add liquidity for 1 wnear and 10 USDC
         </button>
 
         <button

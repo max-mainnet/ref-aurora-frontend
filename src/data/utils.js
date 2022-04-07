@@ -206,10 +206,41 @@ export function auroraCallAction(contract, input) {
     prepareInput(input)
   ).encode();
 
-  return nearAPI.transactions.functionCall(
+  const action = nearAPI.transactions.functionCall(
     'call',
     args,
     TGas.mul(150).toFixed(0),
     1
   );
+
+  return ['aurora', action];
+}
+
+export function parseAuroraPool(
+  decodedRes,
+  nep141A,
+  nep141B,
+  Erc20A,
+  Erc20B,
+  fee = undefined,
+  shares = undefined
+) {
+  const Afirst = Erc20A.id > Erc20B.id;
+
+  const token1Id = Afirst ? nep141A : nep141B;
+  const token1Supply = Afirst ? decodedRes.reserve0 : decodedRes.reserve1;
+  const token2Id = Afirst ? nep141B : nep141A;
+  const token2Supply = Afirst ? decodedRes.reserve1 : decodedRes.reserve0;
+
+  return {
+    fromAurora: true,
+    fee: fee,
+    shares: shares,
+    id: `aurora-${nep141A}-${nep141B}`,
+    token0_price: 0,
+    supplies: {
+      [token1Id]: token1Supply,
+      [token2Id]: token2Supply,
+    },
+  };
 }
