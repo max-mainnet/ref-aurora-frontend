@@ -89,6 +89,7 @@ export default function Dashboard(props) {
 
       const decodedRes = decodeOutput(UniswapPairAbi, 'getReserves', res);
 
+      // TODO: share decimal === 18
       return parseAuroraPool(
         decodedRes,
         nep141A,
