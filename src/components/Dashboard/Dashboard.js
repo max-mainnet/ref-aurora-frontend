@@ -63,6 +63,15 @@ export default function Dashboard(props) {
     [aurora]
   );
 
+  const getTotalSupply = useCallback(async () => {
+    const input = buildInput(UniswapPairAbi, 'totalSupply', []);
+
+    const res = (
+      await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
+    ).unwrap();
+    return decodeOutput(UniswapPairAbi, 'totalSupply', res);
+  }, [address, aurora]);
+
   const getReserves = useCallback(
     async (aurora, address, nep141A, nep141B) => {
       const input = buildInput(UniswapPairAbi, 'getReserves', []);
@@ -76,11 +85,20 @@ export default function Dashboard(props) {
         await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
       ).unwrap();
 
+      const shares = await getTotalSupply();
+
       const decodedRes = decodeOutput(UniswapPairAbi, 'getReserves', res);
 
-      return parseAuroraPool(decodedRes, nep141A, nep141B, Erc20A, Erc20B);
+      return parseAuroraPool(
+        decodedRes,
+        nep141A,
+        nep141B,
+        Erc20A,
+        Erc20B,
+        shares[0]
+      );
     },
-    [getErc20Addr]
+    [getErc20Addr, getTotalSupply]
   );
 
   useEffect(() => {

@@ -222,8 +222,8 @@ export function parseAuroraPool(
   nep141B,
   Erc20A,
   Erc20B,
-  fee = undefined,
-  shares = undefined
+  shares = undefined,
+  fee = 0.3
 ) {
   const Afirst = Erc20A.id > Erc20B.id;
 
