@@ -54,6 +54,15 @@ export default function Dashboard(props) {
 
   const allowanceUSDC = useErc20AllowanceForDex(address, USDCAddr, trisolaris);
 
+  const getNEP141AccountETH = useCallback(async () => {
+    // TODO: not supporting weth bridge on testnet
+    const addr = toAddress('0x0b20972B45ffB8e5d4D37AF4024E1bf0b03f15ae');
+
+    const res = (await aurora.getNEP141Account(addr)).unwrap();
+
+    console.log(res);
+  }, [aurora]);
+
   const getErc20Addr = useCallback(
     async (nep141) => {
       return (
@@ -112,12 +121,18 @@ export default function Dashboard(props) {
       setLoading(false);
     });
 
+    getNEP141AccountETH();
+
     getErc20Addr(wNEAR).then(setwNearAddr);
 
     getErc20Addr(USDC).then(setUSDCAddr);
 
+    // getErc20Addr(
+    //   'c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.factory.bridge.near'
+    // ).then((res) => console.log(res));
+
     getReserves(aurora, address, wNEAR, USDC).then((res) => console.log(res));
-  }, [address, aurora, getErc20Addr, getReserves, near]);
+  }, [address, aurora, getErc20Addr, getNEP141AccountETH, getReserves, near]);
 
   const sortedErc20Balances = erc20Balances
     ? Object.entries(erc20Balances).filter(([t, b]) => b && Big(b).gt(0))

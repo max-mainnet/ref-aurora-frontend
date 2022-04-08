@@ -4,10 +4,14 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/js/bootstrap.bundle';
 import './App.scss';
 import { BrowserRouter as Router, Link, Route, Switch } from 'react-router-dom';
-import { NearConfig, useNearPromise } from './data/near';
+import { IsMainnet, NearConfig, useNearPromise } from './data/near';
 import MainPage from './pages/MainPage';
 
 const RefTestContract = 'exchange.ref-dev.testnet';
+
+const RefMainnetContract = 'v2.ref-finance.near';
+
+const loginAccount = IsMainnet ? RefMainnetContract : RefTestContract;
 
 function App(props) {
   const [connected, setConnected] = useState(false);
@@ -22,7 +26,7 @@ function App(props) {
       const appTitle = 'wiki';
       const near = await _near;
 
-      await near.walletConnection.requestSignIn(RefTestContract, appTitle);
+      await near.walletConnection.requestSignIn(loginAccount, appTitle);
       return false;
     },
     [_near]
