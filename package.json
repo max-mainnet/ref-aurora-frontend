@@ -4,7 +4,7 @@
   "homepage": "https://think-in-universe.github.io/aurora-defi-on-near/",
   "private": true,
   "dependencies": {
-    "@aurora-is-near/engine": "think-in-universe/aurora.js#33-new-call-variant",
+    "@aurora-is-near/engine": "think-in-universe/aurora.js#support-es6",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
