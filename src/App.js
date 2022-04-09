@@ -25,8 +25,7 @@ function App(props) {
       e && e.preventDefault();
       const appTitle = 'wiki';
       const near = await _near;
-
-      await near.walletConnection.requestSignIn(loginAccount, appTitle);
+      await near.walletConnection.requestSignIn('aurora', appTitle);
       return false;
     },
     [_near]

@@ -11,6 +11,7 @@ import {
   decodeOutput,
   parseAuroraPool,
   auroraCallAction,
+  Zero64,
 } from '../../data/utils';
 import Big from 'big.js';
 import { useTokens } from '../../data/aurora/tokenList';
@@ -29,6 +30,8 @@ const USDC = NearConfig.usdcAccountId;
 const trisolaris = NearConfig.trisolarisAddress;
 
 const pairAdd = NearConfig.pairAdd;
+
+const ETHpairAdd = '0x0084B7b4C64eDaaB4d7783e5Fe27f796C4783d44';
 
 const fetchBalance = async (aurora, address) => {
   return Big((await aurora.getBalance(toAddress(address))).unwrap());
@@ -72,6 +75,15 @@ export default function Dashboard(props) {
     [aurora]
   );
 
+  const getTotalSupplyETH = useCallback(async () => {
+    const input = buildInput(UniswapPairAbi, 'totalSupply', []);
+
+    const res = (
+      await aurora.view(toAddress(address), toAddress(ETHpairAdd), 0, input)
+    ).unwrap();
+    return decodeOutput(UniswapPairAbi, 'totalSupply', res);
+  }, [address, aurora]);
+
   const getTotalSupply = useCallback(async () => {
     const input = buildInput(UniswapPairAbi, 'totalSupply', []);
 
@@ -111,6 +123,25 @@ export default function Dashboard(props) {
     [getErc20Addr, getTotalSupply]
   );
 
+  const getReservesETHAndUSDC = useCallback(
+    async (aurora, address) => {
+      const input = buildInput(UniswapPairAbi, 'getReserves', []);
+
+      const res = (
+        await aurora.view(toAddress(address), toAddress(ETHpairAdd), 0, input)
+      ).unwrap();
+
+      const shares = await getTotalSupplyETH();
+
+      console.log(shares);
+
+      const decodedRes = decodeOutput(UniswapPairAbi, 'getReserves', res);
+
+      return decodedRes;
+    },
+    [getTotalSupplyETH]
+  );
+
   useEffect(() => {
     if (!aurora || !address) {
       return;
@@ -121,18 +152,24 @@ export default function Dashboard(props) {
       setLoading(false);
     });
 
-    getNEP141AccountETH();
-
     getErc20Addr(wNEAR).then(setwNearAddr);
 
     getErc20Addr(USDC).then(setUSDCAddr);
 
-    // getErc20Addr(
-    //   'c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.factory.bridge.near'
-    // ).then((res) => console.log(res));
+    // getErc20Addr('aurora').then(res => console.log(res) )
 
     getReserves(aurora, address, wNEAR, USDC).then((res) => console.log(res));
-  }, [address, aurora, getErc20Addr, getNEP141AccountETH, getReserves, near]);
+
+    getReservesETHAndUSDC(aurora, address).then((res) => console.log(res));
+  }, [
+    address,
+    aurora,
+    getErc20Addr,
+    getNEP141AccountETH,
+    getReserves,
+    getReservesETHAndUSDC,
+    near,
+  ]);
 
   const sortedErc20Balances = erc20Balances
     ? Object.entries(erc20Balances).filter(([t, b]) => b && Big(b).gt(0))
@@ -197,6 +234,33 @@ export default function Dashboard(props) {
     }
   };
 
+  const depositETH = async (e, amount) => {
+    e.preventDefault();
+    setLoading(true);
+    const actions = [
+      [
+        'aurora',
+        nearAPI.transactions.functionCall(
+          'ft_transfer_call',
+          {
+            receiver_id: NearConfig.contractName,
+            amount: Big(amount).mul(OneEth).toFixed(0),
+            memo: null,
+            msg:
+              account.accountId +
+              ':' +
+              Zero64 + // fee
+              address.substring(2),
+          },
+          TGas.mul(70).toFixed(0),
+          1
+        ),
+      ],
+    ];
+
+    await near.sendTransactions(actions);
+  };
+
   const approve = async (e, token, amount, unit) => {
     e.preventDefault();
 
@@ -244,6 +308,32 @@ export default function Dashboard(props) {
     }
   };
 
+  const swapExactETHforTokens = async (e, to, amount_in, amount_out) => {
+    e.preventDefault();
+    // setLoading(true);
+
+    // const fromErc20 = await getErc20Addr(from);
+    const toErc20 = await getErc20Addr(to);
+
+    if (toErc20) {
+      const input = buildInput(UniswapRouterAbi, 'swapExactETHForTokens', [
+        1,
+        ['0x1b6A3d5B5DCdF7a37CFE35CeBC0C4bD28eA7e946', toErc20.id],
+        address,
+        (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
+      ]);
+      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+
+      // const res = await near.sendTransactions([actions]);
+
+      console.log(decodeOutput(UniswapRouterAbi, 'swapExactETHForTokens', res));
+
+      // console.log(res);
+
+      // setLoading(false);
+    }
+  };
+
   const addLiquidity = async (e, A, B, amountA, amountB) => {
     const erc20A = await getErc20Addr(A);
     const erc20B = await getErc20Addr(B);
@@ -263,6 +353,32 @@ export default function Dashboard(props) {
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
 
       console.log(decodeOutput(UniswapRouterAbi, 'addLiquidity', res));
+    }
+  };
+
+  const addLiquidityForETHAndUSDC = async (e, B, amountA, amountB) => {
+    e.preventDefault();
+    const erc20B = await getErc20Addr(B);
+
+    if (erc20B) {
+      const input = buildInput(UniswapRouterAbi, 'addLiquidityETH', [
+        erc20B.id,
+        OneUSDC.mul(amountB).round(0, 0).toFixed(0),
+        0,
+        0,
+        address,
+        (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
+      ]);
+
+      const res = (
+        await aurora.call(
+          toAddress(trisolaris),
+          input,
+          OneEth.mul(amountA).round(0, 0).toFixed(0)
+        )
+      ).unwrap();
+
+      console.log(decodeOutput(UniswapRouterAbi, 'addLiquidityETH', res));
     }
   };
 
@@ -325,6 +441,20 @@ export default function Dashboard(props) {
 
         <button
           className="btn btn-primary m-1"
+          onClick={(e) => addLiquidityForETHAndUSDC(e, USDC, 0.00001, 1)}
+        >
+          add liquidity for 0.00001 eth and 1 USDC
+        </button>
+
+        <button
+          className="btn btn-primary m-1"
+          onClick={(e) => depositETH(e, 0.00001)}
+        >
+          Deposit 0.00001 ETH
+        </button>
+
+        <button
+          className="btn btn-primary m-1"
           onClick={(e) => depositToken(e, USDC, 10, OneUSDC)}
         >
           Deposit 10 USDC
@@ -355,6 +485,14 @@ export default function Dashboard(props) {
         >
           Swap 1 wNEAR to USDC on Trisolaris test pair
         </button>
+
+        <button
+          className="btn btn-warning m-1"
+          onClick={(e) => swapExactETHforTokens(e, USDC, 0.00001, 0)}
+        >
+          Swap 0.00001 ETH to USDC on Trisolaris test pair
+        </button>
+
         <button
           className="btn btn-success m-1"
           onClick={(e) => withdrawToken(e, USDC, 1, OneUSDC)}

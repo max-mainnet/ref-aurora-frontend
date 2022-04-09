@@ -22,6 +22,7 @@ export const OneNear = Big(10).pow(24);
 export const OneEth = Big(10).pow(18);
 export const OneUSDC = Big(10).pow(6);
 const AccountSafetyMargin = OneNear.div(2);
+export const Zero64 = '0'.repeat(64);
 
 export const Loading = (
   <span

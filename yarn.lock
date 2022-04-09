@@ -2,9 +2,9 @@
 # yarn lockfile v1
 
 
-"@aurora-is-near/engine@think-in-universe/aurora.js#support-es6":
+"@aurora-is-near/engine@think-in-universe/aurora.js#33-new-call-variant":
   version "0.0.0"
-  resolved "https://codeload.github.com/think-in-universe/aurora.js/tar.gz/6f95f4c4d87ca00bcb8eea4f2f77257935bd0ac4"
+  resolved "https://codeload.github.com/think-in-universe/aurora.js/tar.gz/d262421c9192053d70951e8ee6ddf6d03deb51a9"
   dependencies:
     "@ethersproject/abi" "^5.0.7"
     "@ethersproject/address" "^5.0.11"
