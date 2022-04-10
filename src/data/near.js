@@ -27,6 +27,7 @@ const TestNearConfig = {
   usdcAccountId: 'usdc.fakes.testnet',
   trisolarisAddress: '0x26ec2aFBDFdFB972F106100A3deaE5887353d9B9',
   auroraContractId: 'aurora',
+  ethBridgeAddress: '0xe9217bc70b7ed1f598ddd3199e80b093fa71124f',
   erc20TokenAddressConfig: {
     'wrap.testnet': '0x8711C4728324C9b6264829a2fb92C83c870fd1BE',
     'usdt.fakes.testnet': '0x510c25DCE320749301Fdc4CAde5d0073fe50Ddd8',
@@ -43,6 +44,7 @@ export const MainNearConfig = {
   storageCostPerByte: StorageCostPerByte,
   wrapNearAccountId: 'wrap.near',
   usdcAccountId: 'dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near',
+  ethBridgeAddress: '0xe9217bc70b7ed1f598ddd3199e80b093fa71124f',
   trisolarisAddress: '0x2cb45edb4517d5947afde3beabf95a582506858b',
   auroraContractId: 'aurora',
   erc20TokenAddressConfig: {},

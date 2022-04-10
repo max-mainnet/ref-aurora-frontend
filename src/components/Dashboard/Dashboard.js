@@ -317,20 +317,44 @@ export default function Dashboard(props) {
 
     if (toErc20) {
       const input = buildInput(UniswapRouterAbi, 'swapExactETHForTokens', [
-        1,
+        0,
         ['0x1b6A3d5B5DCdF7a37CFE35CeBC0C4bD28eA7e946', toErc20.id],
         address,
         (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
-      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+      const res = (
+        await aurora.call(
+          toAddress(trisolaris),
+          input,
+          OneEth.mul(amount_in).round(0, 0).toFixed(0)
+        )
+      ).unwrap();
 
       // const res = await near.sendTransactions([actions]);
 
       console.log(decodeOutput(UniswapRouterAbi, 'swapExactETHForTokens', res));
+    }
+  };
 
-      // console.log(res);
+  const swapExactTokensforETH = async (e, from, amount_in, amount_out) => {
+    e.preventDefault();
+    // setLoading(true);
 
-      // setLoading(false);
+    // const fromErc20 = await getErc20Addr(from);
+    const fromErc20 = await getErc20Addr(from);
+
+    if (fromErc20) {
+      const input = buildInput(UniswapRouterAbi, 'swapExactTokensForETH', [
+        OneUSDC.mul(amount_in).round(0, 0).toFixed(0),
+        0,
+        [fromErc20.id, '0x1b6A3d5B5DCdF7a37CFE35CeBC0C4bD28eA7e946'],
+        address,
+        (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
+      ]);
+
+      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+
+      console.log(decodeOutput(UniswapRouterAbi, 'swapExactTokensForETH', res));
     }
   };
 
@@ -380,6 +404,25 @@ export default function Dashboard(props) {
 
       console.log(decodeOutput(UniswapRouterAbi, 'addLiquidityETH', res));
     }
+  };
+
+  const withdrawETH = async (e, amount) => {
+    e.preventDefault();
+    // Warning: The function call here doesn't work, because the current API doesn't support the 2nd `value` parameter
+    //
+    // pub struct FunctionCallArgsV2 {
+    //   pub contract: RawAddress,
+    //   pub value: WeiU256,
+    //   pub input: Vec<u8>,
+    // }
+    const res = (
+      await aurora.call(
+        toAddress(NearConfig.ethBridgeAddress), // contract address
+        `0x00${Buffer.from(account.accountId, 'utf-8').toString('hex')}`, // input
+        OneEth.mul(amount).round(0, 0).toFixed(0)
+      )
+    ).unwrap();
+    console.log(res);
   };
 
   const oneClickToAll = async (e, tokenA, tokenB, amountA) => {
@@ -448,9 +491,9 @@ export default function Dashboard(props) {
 
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => depositETH(e, 0.00001)}
+          onClick={(e) => depositETH(e, 0.001)}
         >
-          Deposit 0.00001 ETH
+          Deposit 0.001 ETH
         </button>
 
         <button
@@ -494,10 +537,24 @@ export default function Dashboard(props) {
         </button>
 
         <button
+          className="btn btn-warning m-1"
+          onClick={(e) => swapExactTokensforETH(e, USDC, 1, 0)}
+        >
+          Swap 1 USDC to ETH on Trisolaris test pair
+        </button>
+
+        <button
           className="btn btn-success m-1"
           onClick={(e) => withdrawToken(e, USDC, 1, OneUSDC)}
         >
           Withdraw 1 USDC
+        </button>
+
+        <button
+          className="btn btn-success m-1"
+          onClick={(e) => withdrawETH(e, 0.0001)}
+        >
+          Withdraw 0.0001 ETH
         </button>
 
         <button
