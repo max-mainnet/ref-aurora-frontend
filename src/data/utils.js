@@ -224,24 +224,22 @@ export function parseAuroraPool(
   Erc20A,
   Erc20B,
   shares = undefined,
-  fee = 0.3
+  fee = 30
 ) {
-  const Afirst = Erc20A.id > Erc20B.id;
+  const Afirst = Number(Erc20A) < Number(Erc20B);
 
-  const token1Id = Afirst ? nep141A : nep141B;
-  const token1Supply = Afirst ? decodedRes.reserve0 : decodedRes.reserve1;
-  const token2Id = Afirst ? nep141B : nep141A;
-  const token2Supply = Afirst ? decodedRes.reserve1 : decodedRes.reserve0;
+  const token1Supply = decodedRes.reserve0;
+  const token2Supply = decodedRes.reserve1;
 
   return {
     fromAurora: true,
     fee: fee,
     shares: shares,
     id: `aurora-${nep141A}-${nep141B}`,
-    token0_price: 0,
+    token0_price: undefined,
     supplies: {
-      [token1Id]: token1Supply,
-      [token2Id]: token2Supply,
+      [nep141A]: Afirst ? token1Supply : token2Supply,
+      [nep141B]: Afirst ? token2Supply : token1Supply,
     },
   };
 }

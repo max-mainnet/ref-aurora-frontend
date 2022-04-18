@@ -87,7 +87,6 @@ function App(props) {
       </button>
     </div>
   );
-
   return (
     <div className="App">
       <Router basename={process.env.PUBLIC_URL}>

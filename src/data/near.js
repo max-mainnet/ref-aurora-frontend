@@ -149,8 +149,12 @@ async function _initNear() {
       } else {
         currentTotalGas = newTotalGas;
       }
+
       actions.push(action);
     });
+
+    console.log(transactions[0].actions, actions);
+
     return await _near.walletConnection.requestSignTransactions(
       transactions,
       callbackUrl

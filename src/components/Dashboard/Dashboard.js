@@ -75,6 +75,14 @@ export default function Dashboard(props) {
     [aurora]
   );
 
+  const getnep141 = useCallback(async () => {
+    return (
+      await aurora.getNEP141Account(
+        toAddress('0xfbe05B1d7bE9A5510C8363e5B9dc1F6AcB03F209')
+      )
+    ).unwrap();
+  }, [aurora]);
+
   const getTotalSupplyETH = useCallback(async () => {
     const input = buildInput(UniswapPairAbi, 'totalSupply', []);
 
@@ -100,8 +108,6 @@ export default function Dashboard(props) {
       const Erc20A = await getErc20Addr(nep141A);
       const Erc20B = await getErc20Addr(nep141B);
 
-      console.log(Erc20A.id, Erc20B.id, Erc20A.id < Erc20B.id);
-
       const res = (
         await aurora.view(toAddress(address), toAddress(pairAdd), 0, input)
       ).unwrap();
@@ -115,8 +121,8 @@ export default function Dashboard(props) {
         decodedRes,
         nep141A,
         nep141B,
-        Erc20A,
-        Erc20B,
+        Erc20A.id,
+        Erc20B.id,
         shares[0]
       );
     },
@@ -147,6 +153,8 @@ export default function Dashboard(props) {
       return;
     }
 
+    getnep141().then((res) => console.log(res));
+
     fetchBalance(aurora, address).then((b) => {
       setBalance(b);
       setLoading(false);
@@ -168,6 +176,7 @@ export default function Dashboard(props) {
     getNEP141AccountETH,
     getReserves,
     getReservesETHAndUSDC,
+    getnep141,
     near,
   ]);
 
@@ -178,42 +187,26 @@ export default function Dashboard(props) {
   sortedErc20Balances.sort(([t1, a], [t2, b]) => b.cmp(a));
 
   const depositToken = async (e, token, amount, unit) => {
-    // e.preventDefault();
-    // setLoading(true);
-
-    // const actions = [
-    //   [
-    //     token,
-    //     nearAPI.transactions.functionCall(
-    //       'ft_transfer_call',
-    //       {
-    //         receiver_id: NearConfig.contractName,
-    //         amount: Big(amount).mul(unit).toFixed(0),
-    //         memo: '',
-    //         msg: address.substring(2),
-    //       },
-    //       TGas.mul(70).toFixed(0),
-    //       1
-    //     ),
-    //   ],
-    // ];
-
-    return [
-      token,
-      nearAPI.transactions.functionCall(
-        'ft_transfer_call',
-        {
-          receiver_id: NearConfig.contractName,
-          amount: Big(amount).mul(unit).toFixed(0),
-          memo: '',
-          msg: address.substring(2),
-        },
-        TGas.mul(70).toFixed(0),
-        1
-      ),
+    e.preventDefault();
+    setLoading(true);
+    const actions = [
+      [
+        token,
+        nearAPI.transactions.functionCall(
+          'ft_transfer_call',
+          {
+            receiver_id: NearConfig.contractName,
+            amount: Big(amount).mul(unit).toFixed(0),
+            memo: '',
+            msg: address.substring(2),
+          },
+          TGas.mul(70).toFixed(0),
+          1
+        ),
+      ],
     ];
 
-    // await near.sendTransactions(actions);
+    await near.sendTransactions(actions);
   };
 
   const withdrawToken = async (e, token, amount, unit) => {
@@ -226,14 +219,11 @@ export default function Dashboard(props) {
     const erc20Addr = await getErc20Addr(token);
     if (erc20Addr) {
       // const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
-
-      return auroraCallAction(toAddress(erc20Addr), input);
-
-      // console.log(res);
-      // return ['aurora', auroraCallAction(toAddress(erc20Addr), input)];
+      aurora.call(toAddress(erc20Addr), input);
     }
   };
 
+  // ok
   const depositETH = async (e, amount) => {
     e.preventDefault();
     setLoading(true);
@@ -274,12 +264,10 @@ export default function Dashboard(props) {
     const erc20Addr = await getErc20Addr(token);
 
     if (erc20Addr) {
-      return auroraCallAction(toAddress(erc20Addr), input);
-
-      // const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
+      const res = (await aurora.call(toAddress(erc20Addr), input)).unwrap();
       // setLoading(false);
 
-      // console.log(res);
+      console.log(res);
     }
   };
 
@@ -298,11 +286,11 @@ export default function Dashboard(props) {
         address,
         (Math.floor(new Date().getTime() / 1000) + 60).toString(), // 60s from now
       ]);
-      // const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
+      const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
 
-      return auroraCallAction(toAddress(trisolaris), input);
+      // return auroraCallAction(toAddress(trisolaris), input);
 
-      // console.log(res);
+      console.log(res);
 
       // setLoading(false);
     }
@@ -332,7 +320,9 @@ export default function Dashboard(props) {
 
       // const res = await near.sendTransactions([actions]);
 
-      console.log(decodeOutput(UniswapRouterAbi, 'swapExactETHForTokens', res));
+      console.log(res);
+
+      // console.log(decodeOutput(UniswapRouterAbi, 'swapExactETHForTokens', res));
     }
   };
 
@@ -354,7 +344,7 @@ export default function Dashboard(props) {
 
       const res = (await aurora.call(toAddress(trisolaris), input)).unwrap();
 
-      console.log(decodeOutput(UniswapRouterAbi, 'swapExactTokensForETH', res));
+      // console.log(decodeOutput(UniswapRouterAbi, 'swapExactTokensForETH', res));
     }
   };
 
@@ -425,42 +415,57 @@ export default function Dashboard(props) {
     console.log(res);
   };
 
-  const oneClickToAll = async (e, tokenA, tokenB, amountA) => {
-    // check allowance compare allowance to account
-    e.preventDefault();
-    const actionList = [];
-    console.log('1212');
-
-    const depositAction = await depositToken(e, wNEAR, amountA, OneNear);
-    console.log(depositAction);
-    actionList.push(depositAction);
-
-    if (Big(allowance).lt(Big(amountA))) {
-      const approveAction = await approve(
-        e,
-        tokenA,
-        Number(amountA) - Number(allowance?.div(Big(OneNear)).toFixed(0)),
-        OneNear
-      );
-      actionList.push(approveAction);
+  const withdraw = async (e, token, amount, unit) => {
+    if (token === 'aurora') {
+      return withdrawETH(e, amount);
+    } else {
+      return withdrawToken(e, token, amount, unit);
     }
-
-    // swap
-    //TODO: slippage tolerance
-    const swapAction = await swap(e, tokenA, tokenB, amountA, 0);
-
-    actionList.push(swapAction);
-
-    // query all balances on and withdraw all
-
-    // const withdrawAction =  await withdrawToken(e, wNEAR, 1, OneNear);
-
-    const withdrawAction = await withdrawToken(e, USDC, 1, OneUSDC);
-
-    actionList.push(withdrawAction);
-
-    near.sendTransactions(actionList);
   };
+
+  const withdrawTokens = async (e, tokens, amounts, units) => {
+    console.log(amounts, tokens, units);
+
+    await withdraw(e, tokens[0], amounts[0], units[0]);
+    await withdraw(e, tokens[1], amounts[1], units[1]);
+  };
+
+  // const oneClickToAll = async (e, tokenA, tokenB, amountA) => {
+  //   // check allowance compare allowance to account
+  //   e.preventDefault();
+  //   const actionList = [];
+  //   console.log('1212');
+
+  //   const depositAction = await depositToken(e, wNEAR, amountA, OneNear);
+  //   console.log(depositAction);
+  //   actionList.push(depositAction);
+
+  //   if (Big(allowance).lt(Big(amountA))) {
+  //     const approveAction = await approve(
+  //       e,
+  //       tokenA,
+  //       Number(amountA) - Number(allowance?.div(Big(OneNear)).toFixed(0)),
+  //       OneNear
+  //     );
+  //     actionList.push(approveAction);
+  //   }
+
+  //   // swap
+  //   //TODO: slippage tolerance
+  //   const swapAction = await swap(e, tokenA, tokenB, amountA, 0);
+
+  //   actionList.push(swapAction);
+
+  //   // query all balances on and withdraw all
+
+  //   // const withdrawAction =  await withdrawToken(e, wNEAR, 1, OneNear);
+
+  //   const withdrawAction = await withdrawToken(e, USDC, 1, OneUSDC);
+
+  //   actionList.push(withdrawAction);
+
+  //   near.sendTransactions(actionList);
+  // };
 
   return (
     <div>
@@ -491,9 +496,9 @@ export default function Dashboard(props) {
 
         <button
           className="btn btn-primary m-1"
-          onClick={(e) => depositETH(e, 0.001)}
+          onClick={(e) => depositETH(e, 0.01)}
         >
-          Deposit 0.001 ETH
+          Deposit 0.01 ETH
         </button>
 
         <button
@@ -552,16 +557,32 @@ export default function Dashboard(props) {
 
         <button
           className="btn btn-success m-1"
-          onClick={(e) => withdrawETH(e, 0.0001)}
+          onClick={(e) => withdrawToken(e, wNEAR, 1, OneNear)}
         >
-          Withdraw 0.0001 ETH
+          Withdraw 1 wnear
         </button>
 
         <button
           className="btn btn-success m-1"
-          onClick={(e) => oneClickToAll(e, wNEAR, USDC, 1)}
+          onClick={(e) => withdrawToken(e, USDC, 1, OneUSDC)}
         >
-          one click to all
+          Withdraw 1 USDC
+        </button>
+
+        <button
+          className="btn btn-success m-1"
+          onClick={(e) =>
+            withdrawTokens(e, [wNEAR, 'aurora'], [1, 0.001], [OneNear, OneEth])
+          }
+        >
+          Withdraw 1 wnear and 0.001 ETH
+        </button>
+
+        <button
+          className="btn btn-success m-1"
+          onClick={(e) => withdrawETH(e, 0.009)}
+        >
+          Withdraw 0.009 ETH
         </button>
       </div>
       <div>
